@@ -151,9 +151,9 @@ function applySession(s: Session) {
   $('#voice').dispatchEvent(new Event('change'));$('#key').dispatchEvent(new Event('change'));
   selected=-1;$('#note-editor').hidden=true;render();updateTrackButtons();
 }
-$('#save').onclick=()=>{
+$('#save').onclick=async()=>{
   try {
-    const token=encodeSession(currentSession());let local=false,cookie=false;
+    const token=await encodeSession(currentSession());let local=false,cookie=false;
     try {localStorage.setItem('synth80-session',token);local=true;}catch{}
     try {cookie=saveCookie(token);}catch{}
     message(cookie?'Tune saved in a cookie for up to one year'+(local?' and in browser storage.':'.'):
@@ -161,17 +161,17 @@ $('#save').onclick=()=>{
       'Browser saving is unavailable. Use Share tune to keep a copy.');
   }catch {message('This tune could not be saved: its data or size is unsupported.');}
 };
-function restoreSaved(): boolean {
+async function restoreSaved(): Promise<boolean> {
   const candidates:string[]=[];
   try{const raw=localStorage.getItem('synth80-session');if(raw)candidates.push(raw);}catch{}
   try{const cookie=readCookie();if(cookie)candidates.push(cookie);}catch{}
-  for(const raw of candidates){try{applySession(readStoredSession(raw));return true;}catch{}}
+  for(const raw of candidates){try{applySession(await readStoredSession(raw));return true;}catch{}}
   return false;
 }
-$('#load').onclick=()=>message(restoreSaved()?'Saved tune restored. Press Play when ready.':'No readable saved tune was found.');
-$('#share').onclick=()=>{
+$('#load').onclick=async()=>message(await restoreSaved()?'Saved tune restored. Press Play when ready.':'No readable saved tune was found.');
+$('#share').onclick=async()=>{
   try {
-    const url=new URL(location.href);url.hash='tune='+encodeSession(currentSession());
+    const url=new URL(location.href);url.hash='tune='+await encodeSession(currentSession());
     $<HTMLInputElement>('#share-link').value=url.href;$('#share-panel').hidden=false;
     $<HTMLInputElement>('#share-link').select();
     message('Share link created. Copy it to share this exact tune.');
@@ -185,15 +185,15 @@ $('#copy-link').onclick=async()=>{
 };
 $('#share-link').onclick=()=>{$<HTMLInputElement>('#share-link').select();};
 $('#close-share').onclick=()=>{$('#share-panel').hidden=true;};
-function restoreLink(): boolean {
+async function restoreLink(): Promise<boolean> {
   const token=new URLSearchParams(location.hash.slice(1)).get('tune');
   if(token===null)return false;
-  try{applySession(decodeSession(token));message('Shared tune loaded. Press Play to listen; Save session keeps it here.');}
+  try{applySession(await decodeSession(token));message('Shared tune loaded. Press Play to listen; Save session keeps it here.');}
   catch{message('This tune link is invalid or uses an unsupported version. Your current tune was kept.');}
   return true;
 }
 window.addEventListener('hashchange',()=>restoreLink());
-if(!restoreLink()&&restoreSaved())message('Your saved tune is ready. Press Play to listen.');
+void (async()=>{if(!await restoreLink()&&await restoreSaved())message('Your saved tune is ready. Press Play to listen.');})();
 
 $('.transpose-controls').onclick=e=>{
   const button=(e.target as HTMLElement).closest<HTMLElement>('[data-transpose]');if(!button)return;

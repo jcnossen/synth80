@@ -16,18 +16,45 @@ const array = (v: unknown, min: number, max: number): unknown[] => {
 };
 const flag = (v: unknown) => { if(v!==0&&v!==1)throw Error('Invalid tune flag.');return v===1; };
 
-export function encodeSession(s: Session): string {
+const maxBytes = 45000;
+const base64 = (bytes: Uint8Array) => btoa(Array.from(bytes,b=>String.fromCharCode(b)).join('')).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+async function transform(bytes: Uint8Array, decompress = false): Promise<Uint8Array> {
+  const codec=decompress?new DecompressionStream('deflate'):new CompressionStream('deflate');
+  const reader=new Blob([new Uint8Array(bytes)]).stream().pipeThrough(codec).getReader();
+  const chunks: Uint8Array[]=[];let size=0;
+  try {
+    while(true) {
+      const {done,value}=await reader.read();if(done)break;
+      size+=value.length;
+      if(size>maxBytes) {await reader.cancel();throw Error('Tune data exceeds the supported size.');}
+      chunks.push(value);
+    }
+  } finally {reader.releaseLock();}
+  const result=new Uint8Array(size);let offset=0;
+  for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}
+  return result;
+}
+
+export async function encodeSession(s: Session): Promise<string> {
   const packed = [s.bpm,s.swing,s.root,s.activeTrack,s.masterVolume,
     s.drums.map((row,i)=>[s.drumKinds[i],row.reduce((mask,on,step)=>mask|(on?1<<step:0),0),s.drumVolumes[i],+s.muted[i]]),
     s.tracks.map(t=>[voices.indexOf(t.patch.voice),t.patch.cutoff,t.patch.decay,t.patch.tone,t.patch.resonance,t.volume,+t.muted,t.notes])];
-  const token='v1.'+btoa(JSON.stringify(packed)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
-  decodeSession(token); // Apply the same limits before saving and sharing.
-  return token;
+  const bytes=new TextEncoder().encode(JSON.stringify(packed));
+  const plain='v1.'+base64(bytes);
+  await decodeSession(plain); // Apply the same limits before saving and sharing.
+  if(typeof CompressionStream==='undefined')return plain;
+  const compressed='v2.'+base64(await transform(bytes));
+  return compressed.length<plain.length?compressed:plain;
 }
 
-export function decodeSession(token: string): Session {
-  if(token.length>60000||!/^v1\.[A-Za-z0-9_-]+$/.test(token))throw Error('Invalid or unsupported tune link.');
-  const data=array(JSON.parse(atob(token.slice(3).replaceAll('-','+').replaceAll('_','/'))),7,7);
+export async function decodeSession(token: string): Promise<Session> {
+  if(token.length>60000||!/^v[12]\.[A-Za-z0-9_-]+$/.test(token))throw Error('Invalid or unsupported tune link.');
+  let bytes=Uint8Array.from(atob(token.slice(3).replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));
+  if(token.startsWith('v2.')){
+    if(typeof DecompressionStream==='undefined')throw Error('Open this compressed tune in a newer browser.');
+    bytes=new Uint8Array(await transform(bytes,true));
+  }
+  const data=array(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)),7,7);
   const drums=array(data[5],0,128).map(row=>array(row,4,4));
   const tracks=array(data[6],1,128).map(row=>{
     const t=array(row,8,8);
@@ -50,11 +77,11 @@ export function saveCookie(token: string): boolean {
 }
 
 /** Migrate sessions saved before compact cookie/link serialization was introduced. */
-export function readStoredSession(raw: string): Session {
-  if(raw.startsWith('v1.'))return decodeSession(raw);
+export async function readStoredSession(raw: string): Promise<Session> {
+  if(/^v[12]\./.test(raw))return decodeSession(raw);
   const old=JSON.parse(raw);
   const tracks=old.tracks??[{notes:old.pattern.notes,patch:old.patch,muted:false,volume:1}];
-  return decodeSession(encodeSession({bpm:old.bpm,swing:old.swing,root:old.root,activeTrack:old.activeTrack??0,masterVolume:old.masterVolume??old.patch.volume??.7,
+  return decodeSession(await encodeSession({bpm:old.bpm,swing:old.swing,root:old.root,activeTrack:old.activeTrack??0,masterVolume:old.masterVolume??old.patch.volume??.7,
     drums:old.pattern.drums,drumKinds:old.drumKinds??old.pattern.drums.map((_:unknown,i:number)=>i%8),
     drumVolumes:old.drumVolumes??old.pattern.drums.map(()=>1),muted:old.muted??old.pattern.drums.map(()=>false),
     tracks:tracks.map((t:SynthTrack)=>({...t,volume:t.volume??1}))}));
