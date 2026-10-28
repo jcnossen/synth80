@@ -133,3 +133,11 @@ button, select { touch-action: manipulation; -webkit-tap-highlight-color: transp
 .pattern-key-guide p>span { display:inline-block; margin-left:8px; }
 @media(max-width:850px) { .pattern-key-map { grid-template-columns:repeat(7,minmax(0,1fr)); } }
 @media(max-width:600px) { .pattern-key-guide { padding:10px; } .pattern-key-map { gap:4px; } .pattern-key-pair { flex-direction:column; gap:4px; padding:3px 0; } .pattern-key-guide p { font-size:11px; } .pattern-key-guide p>span { margin-left:0; } }
+
+.transpose-controls { display:flex; align-items:center; flex-wrap:wrap; gap:18px; margin:0 0 16px; }
+.transpose-controls>label { display:flex; align-items:center; gap:10px; color:#a9b69c; font-size:9px; letter-spacing:1px; }
+.transpose-controls select { width:145px; min-height:44px; }
+.transpose-group { display:flex; align-items:center; gap:6px; }
+.transpose-group>span { font-size:9px; letter-spacing:1px; color:#a9b69c; margin-right:4px; }
+.transpose-group button { min-width:44px; min-height:44px; border:1px solid #647356; border-radius:4px; background:#37432e; font:13px monospace; color:#edf0df; }
+@media(max-width:600px) { .transpose-controls { gap:12px; } .transpose-controls>label { width:100%; justify-content:space-between; } .transpose-controls select { width:165px; font-size:16px; } .transpose-group { flex:1; } .transpose-group>span { font-size:8px; } }
