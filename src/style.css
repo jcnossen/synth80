@@ -123,3 +123,13 @@ button, select { touch-action: manipulation; -webkit-tap-highlight-color: transp
 #share-panel button { min-height:44px; background:#35432c; border:1px solid #657657; border-radius:3px; font-size:10px; padding:8px 12px; }
 #share-panel p { font-size:11px; color:#a9b69c; line-height:1.6; margin-bottom:0; }
 @media(max-width:600px) { footer>div { flex-wrap:wrap; } #share-panel>div { flex-wrap:wrap; } #share-link { flex-basis:100%; font-size:16px; } }
+
+.pattern-key-guide { margin:0 0 16px; padding:12px; background:#20291e; border:1px solid #45513e; border-radius:4px; }
+.pattern-key-map { display:grid; grid-template-columns:repeat(13,minmax(0,1fr)); gap:6px; }
+.pattern-key-pair { display:flex; align-items:center; justify-content:center; gap:6px; min-height:32px; font:10px monospace; color:#d6e4c9; }
+.pattern-key-guide kbd { display:inline-flex; justify-content:center; align-items:center; min-width:22px; min-height:23px; padding:3px 5px; border:1px solid #647356; border-bottom-width:2px; border-radius:3px; background:#37432e; color:#edf0df; font:10px monospace; }
+.pattern-key-pair.accidental kbd { background:#141c13; color:var(--green); }
+.pattern-key-guide p { margin:9px 0 0; color:#a9b69c; font-size:10px; line-height:1.8; }
+.pattern-key-guide p>span { display:inline-block; margin-left:8px; }
+@media(max-width:850px) { .pattern-key-map { grid-template-columns:repeat(7,minmax(0,1fr)); } }
+@media(max-width:600px) { .pattern-key-guide { padding:10px; } .pattern-key-map { gap:4px; } .pattern-key-pair { flex-direction:column; gap:4px; padding:3px 0; } .pattern-key-guide p { font-size:11px; } .pattern-key-guide p>span { margin-left:0; } }
