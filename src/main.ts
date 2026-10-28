@@ -1,13 +1,9 @@
 import './style.css';
 import { encodeSession, decodeSession, readStoredSession, readCookie, saveCookie, type Session } from './session';
 import { pianoKeys, midiForKey, transposeNotes } from './keyboard';
-import { VoiceInput } from './voice';
 import { Engine, type Pattern, type Voice } from './audio';
 
 const engine = new Engine();
-const voiceInput = new VoiceInput();
-let captureArmed = false, capturing = false;
-let capturedNotes: (number | null)[] = Array(16).fill(null);
 const names = ['KICK', 'SNARE', 'HI-HAT', 'TOM', 'CLAP', 'RIM', 'OPEN HAT', 'PERC'];
 const drumIcons = [
   '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
@@ -36,26 +32,26 @@ document.querySelector('#app')!.innerHTML = `
 <section class="sequencer"><div class="section-heading"><h2><span>01</span> RHYTHM SEQUENCER</h2><div class="section-actions"><span>16 STEPS</span><button id="clear">CLEAR</button></div></div><div class="grid-scroll"><div class="step-numbers"><span></span>${Array.from({length:16},(_,i)=>`<span>${String(i+1).padStart(2,'0')}</span>`).join('')}</div><div id="drums"></div></div><div class="add-drum"><label for="drum-kind">NEW DRUM</label><select id="drum-kind">${names.map((name,i)=>`<option value="${i}">${name}</option>`).join('')}</select><button id="add-drum">+ ADD DRUM TRACK</button></div><div class="sequence-footer"><span><i class="tiny-dot"></i> TAP A STEP ? SWIPE FOR MORE</span><span>4 / 4 &nbsp; · &nbsp; 1/16</span></div></section>
 <section class="bass-section"><div class="section-heading"><h2><span>02</span> SYNTH TRACKS</h2><span class="live-label">● POLYPHONIC ENGINE</span></div><div class="track-selector" aria-label="Synth tracks"></div><div class="track-actions"><button id="add-synth">+ ADD SYNTH TRACK</button><button id="synth-mute" aria-pressed="false">MUTE TRACK</button></div><label class="synth-volume" for="synth-volume"><span>TRACK VOLUME</span><input id="synth-volume" type="range" min="0" max="100" step="1" value="100"><output id="synth-volume-value">100%</output></label><div class="synth-layout"><div class="patch-panel"><label class="field-label" for="voice">SOUND ENGINE</label><select id="voice"><option value="fm">01 — FM / Electric bass</option><option value="chip">02 — CHIP / Pixel pulse</option><option value="modular">03 — MOD / Acid circuit</option></select><p id="voice-description">Rounded low end. Metallic harmonics.<br>Inspired by classic Yamaha FM synthesis.</p><div class="scope"><canvas id="scope"></canvas><span id="scope-label">FM · SINE / SINE</span><b>OUTPUT</b></div></div><div class="controls">${[
 ['cutoff','CUTOFF','80','10000','2800','Hz'],['tone','FM DEPTH','0','100','40','%'],['decay','DECAY','8','100','28','ms'],['resonance','RESONANCE','0','18','2','Q']
-].map(([id,label,min,max,value,unit])=>`<label class="knob-control"><span id="${id}-label">${label}</span><div class="dial" id="${id}-dial"><i></i></div><input id="${id}" aria-label="${label}" type="range" min="${min}" max="${max}" value="${value}"><output id="${id}-value">${value}${unit}</output></label>`).join('')}</div></div><div class="bass-heading"><span>NOTE PATTERN <small>SELECT STEP / TYPE NOTE / BACKSPACE: REST</small></span><label>KEY <select id="key">${['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'].map((x,i)=>`<option value="${i}">${x} minor</option>`).join('')}</select></label></div><div class="pattern-key-guide" aria-label="Note pattern keyboard shortcuts"><div class="pattern-key-map">${pianoKeys.map((key,i)=>`<span class="pattern-key-pair ${[1,3,6,8,10].includes(i)?'accidental':''}"><kbd>${key}</kbd><span>${noteName(36+i)}</span></span>`).join('')}</div><p>Select a step, then type a note. <span><kbd>Backspace</kbd> clears it.</span></p></div><div class="transpose-controls"><label for="transpose-target">TRANSPOSE<select id="transpose-target"><option value="pattern">Whole pattern</option><option value="step">Selected note</option></select></label><div class="transpose-group"><span>SEMITONE</span><button data-transpose="-1" aria-label="Transpose down one semitone">-1</button><button data-transpose="1" aria-label="Transpose up one semitone">+1</button></div><div class="transpose-group"><span>OCTAVE</span><button data-transpose="-12" aria-label="Transpose down one octave">-12</button><button data-transpose="12" aria-label="Transpose up one octave">+12</button></div></div><div id="bass" class="bass-grid"></div><div id="note-editor" hidden><span>STEP <b id="edit-step"></b></span>${notes.map(n=>`<button data-note="${n}">${noteName(n)}</button>`).join('')}<button data-note="rest">REST</button><button id="close-editor" aria-label="Close note editor">✕</button></div></section>
+].map(([id,label,min,max,value,unit])=>`<label class="knob-control"><span id="${id}-label">${label}</span><div class="dial" id="${id}-dial"><i></i></div><input id="${id}" aria-label="${label}" type="range" min="${min}" max="${max}" value="${value}"><output id="${id}-value">${value}${unit}</output></label>`).join('')}</div></div><div class="bass-heading"><span>NOTE PATTERN <small>SELECT STEP / TYPE NOTE / BACKSPACE: REST</small></span><label>KEY <select id="key">${['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'].map((x,i)=>`<option value="${i}">${x} minor</option>`).join('')}</select></label></div><div class="transpose-controls"><label for="transpose-target">TRANSPOSE<select id="transpose-target"><option value="pattern">Whole pattern</option><option value="step">Selected note</option></select></label><div class="transpose-group"><span>SEMITONE</span><button data-transpose="-1" aria-label="Transpose down one semitone">-1</button><button data-transpose="1" aria-label="Transpose up one semitone">+1</button></div><div class="transpose-group"><span>OCTAVE</span><button data-transpose="-12" aria-label="Transpose down one octave">-12</button><button data-transpose="12" aria-label="Transpose up one octave">+12</button></div></div><div id="bass" class="bass-grid"></div><section class="keyboard-area"><div class="keyboard-caption"><span>PLAY / ENTER NOTES</span><small>SELECT A STEP, THEN TAP A KEY / BACKSPACE: REST</small></div><div class="keyboard">${Array.from({length:13},(_,i)=>`<button class="piano-key ${[1,3,6,8,10].includes(i)?'black':'white'}" data-midi="${36+i}" aria-label="Play ${noteName(36+i)}"><span><b>${noteName(36+i)}</b><small>${pianoKeys[i]}</small></span></button>`).join('')}</div></section><div id="note-editor" hidden><span>STEP <b id="edit-step"></b></span>${notes.map(n=>`<button data-note="${n}">${noteName(n)}</button>`).join('')}<button data-note="rest">REST</button><button id="close-editor" aria-label="Close note editor">✕</button></div></section>
 <section class="bottom-panel"><div><h2><span>03</span> HAPPY ACCIDENTS</h2><p>A little randomness. A new starting point.</p></div><button id="generate" class="generate">✧ &nbsp; GENERATE GROOVE <span>↗</span></button><label class="master">MASTER <output id="volume-value">70%</output><input id="volume" type="range" min="0" max="100" value="70"></label></section>
-<section class="voice-panel"><div class="section-heading"><h2><span>04</span> VOICE TO SYNTH</h2><span class="live-label">LOCAL PITCH TRACKING</span></div><p>Hum or sing a steady note. Your selected synth follows your pitch.<br>Use headphones to keep the synth out of your microphone.</p><div class="voice-controls"><button id="mic">ENABLE MICROPHONE</button><div class="pitch-readout" aria-live="off"><strong id="pitch-note">?</strong><span id="pitch-detail">MIC OFF</span></div><label>REGISTER<select id="voice-register"><option value="bass">Bass octave</option><option value="natural">My sung octave</option></select></label><button id="capture" disabled>CAPTURE 1 BAR</button></div><p id="voice-status" role="status">Tap Enable microphone to grant access. Your voice stays on this device.</p></section><section class="keyboard-area"><div class="keyboard-caption"><span>PLAY IT LIVE</span><small>Z-M: WHITE NOTES / S D G H J: BLACK / SPACE: PLAY</small></div><div class="keyboard">${Array.from({length:13},(_,i)=>`<button class="piano-key ${[1,3,6,8,10].includes(i)?'black':'white'}" data-midi="${36+i}" aria-label="Play ${noteName(36+i)}"><span>${pianoKeys[i]}</span></button>`).join('')}</div></section>
+
 <div class="machine-foot"><span>SYNTH80 — BUILT FOR THE MOMENT</span><span>WEB AUDIO · NO SAMPLES · ALL SYNTHESIS</span></div></section>
 <footer><span><i class="tiny-dot"></i> MADE TO MAKE SOME NOISE.</span><div><button id="save">SAVE SESSION</button><button id="load">LOAD SESSION</button><button id="share">SHARE TUNE</button><button id="export">EXPORT WAV ↗</button></div></footer><div id="share-panel" hidden><label for="share-link">SHAREABLE TUNE LINK</label><div><input id="share-link" type="text" readonly spellcheck="false"><button id="copy-link">COPY LINK</button><button id="close-share" aria-label="Close share link">CLOSE</button></div><p>Includes all tracks, notes, sound settings and mixer levels. Open the link and press Play.</p></div><p id="message" role="status">Enable audio once to keep your sound driver warm, even when stopped.</p></main>`;
 
 function render() {
   engine.tracks[engine.activeTrack].notes = pattern.notes;
   $('#drums').innerHTML = pattern.drums.map((row,r)=>`<div class="drum-row row-${engine.drumKinds[r]}"><div class="drum-track-controls"><button class="track ${engine.muted[r]?'muted':''}" data-mute="${r}" aria-pressed="${engine.muted[r]}" title="Mute ${names[engine.drumKinds[r]]}"><i></i>${names[engine.drumKinds[r]]}<span>${drumIcons[engine.drumKinds[r]] ?? drumIcons[0]}</span></button><label class="drum-level"><input type="range" min="0" max="100" step="1" value="${Math.round((engine.drumVolumes[r] ?? 1)*100)}" data-drum-volume="${r}" aria-label="${names[engine.drumKinds[r]]} track ${r+1} volume"><output id="drum-volume-${r}">${Math.round((engine.drumVolumes[r] ?? 1)*100)}%</output></label></div>${row.map((on,s)=>`<button class="step ${on?'active':''} ${s%4===0?'beat':''}" data-row="${r}" data-step="${s}" aria-label="${names[engine.drumKinds[r]]} step ${s+1}" aria-pressed="${on}"><i></i></button>`).join('')}</div>`).join('');
-  $('#bass').innerHTML = pattern.notes.map((n,i)=>`<button class="bass-step ${i===selected?'selected':''} ${n!==null?'active':''}" data-bass="${i}"><small>${String(i+1).padStart(2,'0')}</small><span>${n===null?'—':noteName(n)}</span><i style="height:${n===null?3:12+(n%12)*2}px"></i></button>`).join('');
+  $('#bass').innerHTML = pattern.notes.map((n,i)=>`<button class="bass-step ${i===selected?'selected':''} ${n!==null?'active':''}" data-bass="${i}" aria-label="Step ${i+1}: ${n===null?'rest':noteName(n)}" title="Step ${i+1}: ${n===null?'rest':noteName(n)}"><small>${String(i+1).padStart(2,'0')}</small><span>${n===null?'—':noteName(n)}</span><i style="height:${n===null?3:12+(n%12)*2}px"></i></button>`).join('');
 }
 render();
 function message(text: string) { $('#message').textContent = text; }
 async function ready() { await engine.init(); $('#power').classList.add('enabled'); $('#power span').textContent = 'AUDIO ON · OFF'; }
 async function toggle() { try { if(engine.playing) stop(); else { await ready(); await engine.start(); $('#play').classList.add('playing'); $('#play span').textContent='PLAYING'; } } catch { message('Audio could not start. Try enabling audio again.'); } }
-function stop() { cancelCapture(); engine.stop(); $('#play').classList.remove('playing'); $('#play span').textContent='PLAY'; }
+function stop() {  engine.stop(); $('#play').classList.remove('playing'); $('#play span').textContent='PLAY'; }
 $('#play').onclick = toggle; $('#stop').onclick = stop;
-$('#power').onclick = async () => { if(engine.context) { stop(); voiceInput.stop(); updateMic(); await engine.off(); $('#power').classList.remove('enabled'); $('#power span').textContent='ENABLE AUDIO'; message('Audio device released.'); } else { await ready(); message('Audio ready. A very quiet noise signal keeps the driver awake while stopped.'); } };
+$('#power').onclick = async () => { if(engine.context) { stop(); await engine.off(); $('#power').classList.remove('enabled'); $('#power span').textContent='ENABLE AUDIO'; message('Audio device released.'); } else { await ready(); message('Audio ready. A very quiet noise signal keeps the driver awake while stopped.'); } };
 $('#drums').onclick = e => { const el=(e.target as HTMLElement).closest<HTMLElement>('button'); if(!el)return; if(el.dataset.mute!==undefined) engine.muted[+el.dataset.mute]=!engine.muted[+el.dataset.mute]; else {const r=+el.dataset.row!,s=+el.dataset.step!;pattern.drums[r][s]=!pattern.drums[r][s];} render(); };
-$('#bass').onclick = e => { const el=(e.target as HTMLElement).closest<HTMLElement>('[data-bass]'); if(!el)return; selected=+el.dataset.bass!; $('#edit-step').textContent=String(selected+1); $('#note-editor').hidden=false; document.querySelectorAll('[data-bass]').forEach(step=>step.classList.toggle('selected',step===el)); if(matchMedia('(max-width: 600px)').matches) $('#note-editor').scrollIntoView({block:'nearest',behavior:'smooth'}); };
+$('#bass').onclick = e => { const el=(e.target as HTMLElement).closest<HTMLElement>('[data-bass]'); if(!el)return; selected=+el.dataset.bass!; $('#edit-step').textContent=String(selected+1); $('#note-editor').hidden=false; document.querySelectorAll('[data-bass]').forEach(step=>step.classList.toggle('selected',step===el)); };
 $('#bass').oncontextmenu = e => {const el=(e.target as HTMLElement).closest<HTMLElement>('[data-bass]'); if(el){e.preventDefault();pattern.notes[+el.dataset.bass!]=null;render();}};
 $('#note-editor').onclick = async e => {const el=(e.target as HTMLElement).closest<HTMLElement>('[data-note]');if(!el||selected<0)return; const n=el.dataset.note==='rest'?null:+el.dataset.note!+root;pattern.notes[selected]=n;render();if(n!==null){await ready();engine.bass(n);}};
 $('#close-editor').onclick=()=>{$('#note-editor').hidden=true;selected=-1;render();};
@@ -67,14 +63,14 @@ $('#swing').oninput=()=>{const value=+$<HTMLInputElement>('#swing').value;engine
 function setControl(id:string) {const v=+$<HTMLInputElement>('#'+id).value; if(id==='volume'){engine.setVolume(v/100);$('#volume-value').textContent=v+'%';return;} if(id==='cutoff')engine.patch.cutoff=v;if(id==='tone')engine.patch.tone=v;if(id==='decay')engine.patch.decay=v/100;if(id==='resonance')engine.patch.resonance=v;$('#'+id+'-value').textContent=id==='cutoff'?(v/1000).toFixed(1)+' kHz':id==='decay'?v*10+' ms':id==='tone'?v+'%':v.toFixed(1)+' Q';const input=$<HTMLInputElement>('#'+id);$('#'+id+'-dial').style.setProperty('--rotation',(-135+(v-+input.min)/(+input.max-+input.min)*270)+'deg');}
 ['cutoff','tone','decay','resonance','volume'].forEach(id=>{$('#'+id).oninput=()=>setControl(id);setControl(id);});
 $('#voice').onchange=()=>{engine.patch.voice=$<HTMLSelectElement>('#voice').value as Voice;const v=engine.patch.voice;$('#voice-description').innerHTML=v==='fm'?'Rounded low end. Metallic harmonics.<br>Inspired by classic Yamaha FM synthesis.':v==='chip'?'Square waves. Electric nostalgia.<br>A tiny arcade inside your browser.':'Moving filters. Resonant edges.<br>A patch-cable state of mind.';$('#tone-label').textContent=v==='modular'?'LFO DEPTH':v==='chip'?'CHIP EDGE':'FM DEPTH';$('#scope-label').textContent=v==='fm'?'FM · SINE / SINE':v==='chip'?'CHIP · SQUARE':'MOD · SAW / LFO';};
-engine.onStep=s=>{captureStep(s);document.querySelectorAll('.current').forEach(e=>e.classList.remove('current'));if(s>=0){document.querySelectorAll(`[data-step="${s}"], [data-bass="${s}"]`).forEach(e=>e.classList.add('current'));$('#position').innerHTML=String(s+1).padStart(2,'0')+' <small>/ 16</small>';}else $('#position').innerHTML='01 <small>/ 16</small>';};
-async function audition(midi:number) {await ready();engine.bass(midi);const el=$(`[data-midi="${midi}"]`);el.classList.add('pressed');setTimeout(()=>el.classList.remove('pressed'),160);}
+engine.onStep=s=>{document.querySelectorAll('.current').forEach(e=>e.classList.remove('current'));if(s>=0){document.querySelectorAll(`[data-step="${s}"], [data-bass="${s}"]`).forEach(e=>e.classList.add('current'));$('#position').innerHTML=String(s+1).padStart(2,'0')+' <small>/ 16</small>';}else $('#position').innerHTML='01 <small>/ 16</small>';};
+async function audition(midi:number) {if(selected>=0&&!$('#note-editor').hidden){pattern.notes[selected]=midi;render();}await ready();engine.bass(midi);const el=$(`[data-midi="${midi}"]`);el.classList.add('pressed');setTimeout(()=>el.classList.remove('pressed'),160);}
 const touches = new Map<number, number>();
 $('.keyboard').onpointerdown=e=>{const el=(e.target as HTMLElement).closest<HTMLElement>('[data-midi]');if(el){e.preventDefault();touches.set(e.pointerId,+el.dataset.midi!);$('.keyboard').setPointerCapture(e.pointerId);void audition(+el.dataset.midi!).catch(()=>message('Tap Enable audio to resume sound.'));}};
 $('.keyboard').onpointermove=e=>{if(!touches.has(e.pointerId))return;const el=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-midi]');if(el&&touches.get(e.pointerId)!==+el.dataset.midi!){touches.set(e.pointerId,+el.dataset.midi!);void audition(+el.dataset.midi!).catch(()=>message('Tap Enable audio to resume sound.'));}};
 $('.keyboard').onpointerup=$('.keyboard').onpointercancel=e=>{touches.delete(e.pointerId);};
 // Phone browsers suspend audio/timers when backgrounded. Avoid a burst of overdue notes.
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(engine.playing){stop();message('Playback paused while the app was in the background. Tap Play to resume.');}voiceInput.stop();updateMic();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(engine.playing){stop();message('Playback paused while the app was in the background. Tap Play to resume.');}}});
 window.onkeydown=e=>{
   const target=e.target as HTMLElement;
   if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||target.isContentEditable||['INPUT','SELECT','TEXTAREA'].includes(target.tagName))return;
@@ -86,7 +82,6 @@ window.onkeydown=e=>{
   const midi=midiForKey(e.key);
   if(midi!==null){
     e.preventDefault();
-    if(editing){pattern.notes[selected]=midi;render();}
     void audition(midi).catch(()=>message('Tap Enable audio to resume sound.'));
   }
 };
@@ -94,54 +89,6 @@ const canvas=$<HTMLCanvasElement>('#scope'), ctx=canvas.getContext('2d')!, wave=
 function draw(){canvas.width=canvas.clientWidth*devicePixelRatio;canvas.height=canvas.clientHeight*devicePixelRatio;const w=canvas.width,h=canvas.height;ctx.strokeStyle='#253e38';ctx.lineWidth=1;for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(i*w/8,0);ctx.lineTo(i*w/8,h);ctx.stroke();}ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();engine.analyser?.getByteTimeDomainData(wave);ctx.strokeStyle='#a9e3bc';ctx.lineWidth=1.5*devicePixelRatio;ctx.beginPath();for(let x=0;x<w;x++){const value=engine.analyser?(wave[Math.floor(x/w*2048)]-128)/128:0;const y=h/2+value*h*.42;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();requestAnimationFrame(draw);}draw();
 $('#export').onclick=async()=>{if(!engine.context){await ready();}const c=engine.context!;const dest=c.createMediaStreamDestination();engine.analyser!.connect(dest);if(typeof MediaRecorder==='undefined'){message('Recording is unavailable in this browser.');engine.analyser!.disconnect(dest);return;}const mime=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t));if(!mime){message('Recording is unavailable in this browser.');engine.analyser!.disconnect(dest);return;}message('Recording one loop…');const chunks:Blob[]=[];const recorder=new MediaRecorder(dest.stream,{mimeType:mime});const button=$<HTMLButtonElement>('#export');button.disabled=true;stop();recorder.ondataavailable=e=>chunks.push(e.data);recorder.onstop=async()=>{try{const data=await new Blob(chunks).arrayBuffer();const buffer=await c.decodeAudioData(data);const length=buffer.length,channels=buffer.numberOfChannels;const bytes=new ArrayBuffer(44+length*channels*2),view=new DataView(bytes);const str=(o:number,s:string)=>{for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i));};str(0,'RIFF');view.setUint32(4,bytes.byteLength-8,true);str(8,'WAVE');str(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,buffer.sampleRate,true);view.setUint32(28,buffer.sampleRate*channels*2,true);view.setUint16(32,channels*2,true);view.setUint16(34,16,true);str(36,'data');view.setUint32(40,length*channels*2,true);for(let i=0;i<length;i++)for(let ch=0;ch<channels;ch++)view.setInt16(44+(i*channels+ch)*2,Math.max(-1,Math.min(1,buffer.getChannelData(ch)[i]))*32767,true);const url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));const a=document.createElement('a');a.href=url;a.download='synth80-groove.wav';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);message('WAV exported with the release tail.');}catch{message('Could not encode recording. Try again.');}finally{button.disabled=false;dest.stream.getTracks().forEach(t=>t.stop());try{engine.analyser?.disconnect(dest);}catch{}}};recorder.start();await engine.start(16);$('#play').classList.add('playing');$('#play span').textContent='PLAYING';setTimeout(()=>{stop();setTimeout(()=>recorder.stop(),Math.max(600,engine.patch.decay*1000+150));},60/engine.bpm*4*1000+60);};
 
-
-function updateMic() {
-  $('#mic').textContent = voiceInput.active ? 'STOP MICROPHONE' : 'ENABLE MICROPHONE';
-  $('#mic').classList.toggle('enabled', voiceInput.active);
-  $<HTMLButtonElement>('#capture').disabled = !voiceInput.active;
-  if(!voiceInput.active) { cancelCapture(); $('#pitch-detail').textContent = 'MIC OFF'; }
-}
-function mappedVoiceNote(note: number) { return $<HTMLSelectElement>('#voice-register').value === 'bass' ? 36 + note % 12 : note; }
-let lastVoiceNote: number | null = null, lastVoiceTime = 0;
-voiceInput.onPitch=(note,hz)=>{
-  const mapped = note === null ? null : mappedVoiceNote(note);
-  $('#pitch-note').textContent = mapped === null ? '?' : noteName(mapped);
-  $('#pitch-detail').textContent = hz === null ? (voiceInput.active ? 'LISTENING?' : 'MIC OFF') : Math.round(hz)+' Hz ? SYNTH';
-  if(mapped !== null && engine.context) {
-    const now = engine.context.currentTime;
-    if(mapped !== lastVoiceNote || now-lastVoiceTime > Math.max(.12,engine.patch.decay*.65)) {
-      engine.bass(mapped); lastVoiceTime=now;
-    }
-  }
-  lastVoiceNote=mapped;
-  if(!voiceInput.active) updateMic();
-};
-$('#mic').onclick=async()=>{
-  if(voiceInput.active) { voiceInput.stop(); updateMic(); $('#voice-status').textContent='Microphone released.'; return; }
-  const button=$<HTMLButtonElement>('#mic');button.disabled=true;
-  try { await ready(); await voiceInput.start(engine.context!); updateMic(); $('#voice-status').textContent=voiceInput.active?'Listening. Hum one clear note at a time; capture records the next full bar.':'Microphone stopped.'; }
-  catch(error) { voiceInput.stop(); updateMic(); $('#voice-status').textContent=error instanceof DOMException && error.name==='NotAllowedError'?'Microphone access was denied. Allow it in your browser settings, then try again.':error instanceof Error?error.message:'Could not open the microphone.'; }
-  finally {button.disabled=false;}
-};
-function cancelCapture() {
-  captureArmed=false;capturing=false;engine.bassMuted=false;
-  if(document.querySelector('#capture')) $('#capture').textContent='CAPTURE 1 BAR';
-}
-$('#capture').onclick=async()=>{
-  if(captureArmed||capturing){cancelCapture();$('#voice-status').textContent='Capture cancelled; previous pattern kept.';return;}
-  if(!voiceInput.active)return;
-  captureArmed=true; capturedNotes=Array(16).fill(null); $('#capture').textContent='CANCEL CAPTURE';
-  $('#voice-status').textContent='Waiting for step 1. Sing through the next full bar.';
-  if(!engine.playing) await toggle();
-};
-function captureStep(step:number) {
-  if(step<0)return;
-  if(captureArmed&&step===0) {captureArmed=false;capturing=true;engine.bassMuted=true;}
-  if(!capturing)return;
-  capturedNotes[step]=voiceInput.note===null?null:mappedVoiceNote(voiceInput.note);
-  $('#voice-status').textContent='Capturing step '+(step+1)+' / 16?';
-  if(step===15) {pattern.notes=[...capturedNotes];cancelCapture();render();$('#voice-status').textContent='Bassline captured! Stop the microphone to hear your loop.';}
-}
 
 function updateTrackButtons() {
   const volume=Math.round(engine.tracks[engine.activeTrack].volume*100);
@@ -153,7 +100,7 @@ function updateTrackButtons() {
 }
 $('.track-selector').onclick=e=>{
   const el=(e.target as HTMLElement).closest<HTMLElement>('[data-synth]');if(!el)return;
-  cancelCapture();engine.activeTrack=+el.dataset.synth!;pattern.notes=engine.tracks[engine.activeTrack].notes;
+  engine.activeTrack=+el.dataset.synth!;pattern.notes=engine.tracks[engine.activeTrack].notes;
   const patch=engine.patch;
   for(const [id,v] of Object.entries({voice:patch.voice,cutoff:patch.cutoff,tone:patch.tone,decay:patch.decay*100,resonance:patch.resonance}))$<HTMLInputElement>('#'+id).value=String(v);
   ['cutoff','tone','decay','resonance'].forEach(setControl);$('#voice').dispatchEvent(new Event('change'));$('#note-editor').hidden=true;selected=-1;render();updateTrackButtons();
@@ -164,7 +111,7 @@ $('#add-synth').onclick=()=>{
   engine.tracks.push({notes:Array(16).fill(null),patch:{...engine.patch},muted:false,volume:1});
   updateTrackButtons();
   $<HTMLButtonElement>(`[data-synth="${engine.tracks.length-1}"]`).click();
-  message('Synth track '+engine.tracks.length+' added. Enter notes, generate a groove, or capture your voice.');
+  message('Synth track '+engine.tracks.length+' added. Enter notes with the keyboard or generate a groove.');
 };
 $('#add-drum').onclick=()=>{
   const kind=+$<HTMLSelectElement>('#drum-kind').value;
@@ -192,7 +139,7 @@ function currentSession(): Session {
     drums:pattern.drums,drumKinds:engine.drumKinds,drumVolumes:engine.drumVolumes,muted:engine.muted,tracks:engine.tracks};
 }
 function applySession(s: Session) {
-  stop();voiceInput.stop();updateMic();
+  stop();
   engine.tracks=s.tracks;engine.activeTrack=s.activeTrack;
   pattern={drums:s.drums,notes:engine.tracks[s.activeTrack].notes};engine.pattern=pattern;
   engine.bpm=s.bpm;engine.swing=s.swing;root=s.root;

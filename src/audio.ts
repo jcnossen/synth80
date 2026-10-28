@@ -22,7 +22,6 @@ export class Engine {
   activeTrack = 0;
   masterVolume = .7;
   tracks: SynthTrack[] = Array.from({length: 1}, (_, i) => ({notes: Array(16).fill(null), muted:false, volume:1, patch:{voice: i===1?'chip':i===2?'modular':'fm', cutoff:2800, decay:.28, tone:40, resonance:2, volume:.7}}));
-  bassMuted = false;
   onStep: (step: number) => void = () => {};
   pattern!: Pattern;
   get patch() { return this.tracks[this.activeTrack].patch; }
@@ -60,7 +59,7 @@ export class Engine {
     while (this.nextTime < c.currentTime + .1 && this.playing && this.remaining > 0) {
       const s = this.step; const t = this.nextTime; const gen = this.generation;
       this.pattern.drums.forEach((row, i) => { if (row[s] && !this.muted[i]) this.drum(this.drumKinds[i], t, this.drumVolumes[i] ?? 1); });
-      this.tracks.forEach((track,i)=>{const note=track.notes[s];if(note!==null&&!track.muted&&!(this.bassMuted&&i===this.activeTrack))this.bass(note,t,track.patch,track.volume);});
+      this.tracks.forEach((track,i)=>{const note=track.notes[s];if(note!==null&&!track.muted)this.bass(note,t,track.patch,track.volume);});
       window.setTimeout(() => { if (this.playing && gen === this.generation) this.onStep(s); }, Math.max(0, (t - c.currentTime) * 1000));
       this.nextTime += 60 / this.bpm / 4 * (1 + (s % 2 === 0 ? 1 : -1) * this.swing);
       this.step = (s + 1) % 16;

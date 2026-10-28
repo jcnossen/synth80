@@ -17,22 +17,22 @@ Click drum pads to toggle steps; click track names to mute. Click a bass step to
 
 Sounds are synthesized in real time, with no samples or Yamaha software. The FM voice is inspired by classic FM bass, not a hardware emulation. No backend, accounts or API keys are required.
 
-## Mobile, tracks and voice input
+## Mobile and tracks
 
 Deployed at https://jcnossen.nl/synth/ using the saved PuTTY `contabo` session (the trusted hostname for this server), PSCP for upload and Plink for remote deployment. Vite uses `/synth/` as its asset base. `deploy-nginx.conf` scopes hosting to this path. The initial deployment script saves the previous nginx virtual host configuration outside `sites-enabled` before adding its include.
 
-Use **Add synth track** for independent patterns and synth patches. Select a track before editing, generating or capturing notes; mute it with **Mute track**. **Add drum track** adds the chosen instrument, including clap, rim, open hat and percussion. Sessions retain added tracks.
+Use **Add synth track** for independent patterns and synth patches. Select a track before editing or generating notes; mute it with **Mute track**. **Add drum track** adds the chosen instrument, including clap, rim, open hat and percussion. Sessions retain added tracks.
 
-The phone layout has large touch targets, horizontally scrollable drum steps with pinned track names, a four-column note editor, and a touch/slide keyboard. Enable microphone over HTTPS, then hum a steady note with headphones on. Pitch detection is entirely local; the original microphone signal is never sent to the speakers or uploaded. Choose **Bass octave** or **My sung octave**, then **Capture 1 bar** to sample the next full bar into the selected track. Silence inserts rests. Stop the microphone after capture to hear the loop. Leaving the tab stops the microphone and pauses transport; the audio keep-alive is retained until Audio off (subject to browser background suspension).
+The phone layout uses a compact single row of 16 note steps. The playable keyboard sits directly underneath, with note and computer-key labels. Select a step and tap or slide across the keyboard to enter notes; without a selected step it plays live. Drum steps scroll horizontally with pinned track controls. Microphone input is currently removed. Leaving the tab pauses playback; the audio keep-alive remains until Audio off (subject to browser background suspension).
 
-Checks: TypeScript and production build; synthetic pitch detection at 82.41?880 Hz, 44.1/48 kHz, plus silence. Physical-device microphone and touch testing still required. Pitch detection is monophonic and works best with sustained humming in a quiet room.
+Checks: TypeScript build and session serialization tests. Physical-device touch testing still required.
 
-Each synth track has its own Track Volume slider (0-100%), affecting sequenced notes, keyboard playing and voice monitoring on that track. Master remains independent. Session Save/Load retains these levels; older sessions default synth tracks to 100%.
+Each synth track has its own Track Volume slider (0-100%), affecting sequenced notes, keyboard playing on that track. Master remains independent. Session Save/Load retains these levels; older sessions default synth tracks to 100%.
 
 ## Saving and sharing
 
 **Save session** stores a versioned compact tune in local storage and, when it fits, a cookie scoped to `/synth/` with a one-year expiry, SameSite=Lax and Secure on HTTPS. Cookies larger than 3,800 characters fall back to local storage with a visible message. The app restores saved tunes on startup; shared links take priority. Existing JSON sessions are migrated when loaded.
 
-**Share tune** serializes all drum/synth patterns, voices, patch parameters, mutes, volumes, tempo, swing and key into a URL fragment (`#tune=v1.?`). Copy the displayed link to share; clipboard failure leaves a selectable link for manual copying. The fragment is decoded locally, with version, size, structure and numeric range validation. The tune payload is not sent to the hosting server in the URL. Links load paused and do not overwrite browser saves until Save session is pressed. Microphone recordings are not included?only captured notes.
+**Share tune** serializes all drum/synth patterns, voices, patch parameters, mutes, volumes, tempo, swing and key into a URL fragment (`#tune=v1.?`). Copy the displayed link to share; clipboard failure leaves a selectable link for manual copying. The fragment is decoded locally, with version, size, structure and numeric range validation. The tune payload is not sent to the hosting server in the URL. Links load paused and do not overwrite browser saves until Save session is pressed.
 
 Run `node --experimental-strip-types tests/session.test.mjs` to check serialization, legacy migration, invalid links and cookie limits.

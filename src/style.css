@@ -65,25 +65,12 @@ button, select { touch-action: manipulation; -webkit-tap-highlight-color: transp
 
 .row-4 { --track:#d9a4ab; } .row-5 { --track:#d3cd8e; } .row-6 { --track:#8cbbc4; } .row-7 { --track:#c4a38c; }
 .track-selector { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 22px; }
-.track-selector button, .voice-controls button { min-height:44px; padding:10px 14px; border:1px solid #59694e; border-radius:4px; background:#1f291d; font-size:10px; letter-spacing:.7px; }
-.track-selector .selected, .voice-controls .enabled { background:var(--green); color:#243020; }
+.track-selector button { min-height:44px; padding:10px 14px; border:1px solid #59694e; border-radius:4px; background:#1f291d; font-size:10px; letter-spacing:.7px; }
+.track-selector .selected { background:var(--green); color:#243020; }
 #synth-mute { margin-left:auto; }
-.voice-panel { padding:24px 28px; border-bottom:1px solid #424b44; }
-.voice-panel p { color:#a9b69c; font-size:11px; line-height:1.7; }
-.voice-controls { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-.voice-controls label { font-size:9px; letter-spacing:1px; color:#a9b69c; }
-.voice-controls select { margin-top:5px; }
-.pitch-readout { min-width:120px; padding:10px 15px; background:#17231e; border:1px solid #3b5141; border-radius:4px; }
-.pitch-readout strong { font:25px monospace; color:var(--green); display:block; }
-.pitch-readout span { display:block; font:9px monospace; color:#a9b69c; margin-top:5px; }
 @media(max-width:600px) {
   .track-selector { display:grid; grid-template-columns:1fr 1fr; }
   #synth-mute { margin:0; grid-column:1 / -1; }
-  .voice-panel { padding:22px 18px; }
-  .voice-controls { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .voice-controls button { font-size:9px; padding:10px 8px; }
-  .voice-controls select { font-size:16px; }
-  .pitch-readout { min-width:0; }
 }
 
 .track-actions, .add-drum { display:flex; align-items:center; gap:12px; margin:12px 0 22px; flex-wrap:wrap; }
@@ -141,3 +128,26 @@ button, select { touch-action: manipulation; -webkit-tap-highlight-color: transp
 .transpose-group>span { font-size:9px; letter-spacing:1px; color:#a9b69c; margin-right:4px; }
 .transpose-group button { min-width:44px; min-height:44px; border:1px solid #647356; border-radius:4px; background:#37432e; font:13px monospace; color:#edf0df; }
 @media(max-width:600px) { .transpose-controls { gap:12px; } .transpose-controls>label { width:100%; justify-content:space-between; } .transpose-controls select { width:165px; font-size:16px; } .transpose-group { flex:1; } .transpose-group>span { font-size:8px; } }
+
+/* Pattern and playable keyboard stay together at every screen size. */
+.bass-section .keyboard-area { margin-top:12px; padding:12px 0 0; background:none; display:block; }
+.bass-section .keyboard-caption { width:auto; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.bass-section .keyboard-caption small { margin:0; }
+.piano-key span b { display:block; font:10px monospace; margin-bottom:3px; }
+.piano-key span small { display:block; font:8px monospace; opacity:.75; }
+@media(max-width:600px) {
+  .bass-grid { grid-template-columns:repeat(16,minmax(0,1fr)); gap:2px; }
+  .bass-step { min-width:0; height:52px; padding:5px 0; border-radius:2px; }
+  .bass-step small { font-size:6px; margin-left:0; align-self:center; }
+  .bass-step span { font-size:8px; letter-spacing:-.6px; margin-top:5px; white-space:nowrap; }
+  .bass-step i { width:65%; bottom:4px; max-height:14px; }
+  .bass-step.selected { outline-offset:0; }
+  .bass-section .keyboard-area { margin-top:10px; }
+  .bass-section .keyboard-caption { display:block; }
+  .bass-section .keyboard-caption small { margin-top:5px; font-size:7px; }
+  .bass-section .keyboard { height:90px; }
+  .piano-key span b { font-size:9px; }
+  .piano-key.black span b { font-size:7px; }
+  .piano-key span small { font-size:7px; }
+}
+@media(max-width:359px) { .bass-step span { font-size:7px; } }
