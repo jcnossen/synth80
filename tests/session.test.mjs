@@ -54,3 +54,9 @@ assert.deepEqual(await decodeSession(largeToken),large);
 console.log(`Two-track tune: ${oldToken.length} -> ${token.length} characters (${Math.round((1-token.length/oldToken.length)*100)}% shorter).`);
 console.log(`16-track tune: ${largeOld.length} -> ${largeToken.length} characters (${Math.round((1-largeToken.length/largeOld.length)*100)}% shorter).`);
 console.log('Compression compatibility, corruption, expansion limit, and older-browser fallback checks passed.');
+
+for(const voice of ['slap','dx','finger','analog']) {
+  const tune={...session,tracks:[{...session.tracks[0],patch:{...patch,voice}}],activeTrack:0};
+  assert.deepEqual(await decodeSession(await encodeSession(tune)),tune);
+}
+console.log('All added sound engines survive save/share round trips.');

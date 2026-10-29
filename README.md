@@ -36,3 +36,16 @@ Each synth track has its own Track Volume slider (0-100%), affecting sequenced n
 **Share tune** losslessly compresses and serializes all drum/synth patterns, voices, patch parameters, mutes, volumes, tempo, swing and key into a URL fragment (`#tune=v2.<compressed-state>`). Copy the displayed link to share; clipboard failure leaves a selectable link for manual copying. Version 2 uses native DEFLATE compression plus URL-safe Base64, retaining version 1 if it is shorter or native compression is unavailable. Existing v1 links and cookies still load. The fragment is decoded locally, with version, size, structure and numeric range validation and a bounded decompression output. Opening a v2 link requires a browser with DecompressionStream support. The tune payload is not sent to the hosting server in the URL. Links load paused and do not overwrite browser saves until Save session is pressed.
 
 Run `node --experimental-strip-types tests/session.test.mjs` to check serialization, compression ratios, v1/legacy migration, invalid or corrupt links, decompression size limits and cookie limits.
+
+## Bass engines
+
+Choose the engine on each synth track independently. Alongside FM, chiptune and modular, the app includes:
+
+- **Slap / Sitcom funk**: a struck-string pitch bend, fast FM harmonics, filtered string noise and solid fundamental. Increase Slap Snap for a brighter pop; try octave jumps and shorter decay.
+- **DX / 80s keyboard bass**: two FM operator pairs with separate attack envelopes, inspired by vintage Yamaha keyboard bass.
+- **Finger / Warm electric**: mellow triangle body with a softer harmonic pluck.
+- **Analog / Detuned sub**: detuned saw pair plus a sub oscillator and closing filter.
+
+These voices are original procedural synthesis, not sampled instruments, Yamaha hardware emulations or recordings from Seinfeld. Cutoff, decay, resonance, tone and track volume remain editable; sound choices are included in saved sessions and tune links. Existing voice IDs retain their original meanings.
+
+Run `npm test` for session compatibility and offline audio-render checks covering every engine, mute/volume scaling, tone controls and release tails. Offline rendering uses a development-only Web Audio implementation; browser listening checks are still recommended.

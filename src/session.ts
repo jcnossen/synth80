@@ -1,11 +1,12 @@
-import type { SynthTrack, Voice } from './audio';
+import type { SynthTrack } from './audio';
+import { VOICE_IDS } from './audio.ts';
 
 export type Session = {
   bpm: number; swing: number; root: number; activeTrack: number; masterVolume: number;
   drums: boolean[][]; drumKinds: number[]; drumVolumes: number[]; muted: boolean[];
   tracks: SynthTrack[];
 };
-const voices: Voice[] = ['fm','chip','modular'];
+const voices = VOICE_IDS;
 const number = (v: unknown, min: number, max: number, integer = false): number => {
   if(typeof v !== 'number'||!Number.isFinite(v)||v<min||v>max||(integer&&!Number.isInteger(v))) throw Error('Invalid tune value.');
   return v;
@@ -58,7 +59,7 @@ export async function decodeSession(token: string): Promise<Session> {
   const drums=array(data[5],0,128).map(row=>array(row,4,4));
   const tracks=array(data[6],1,128).map(row=>{
     const t=array(row,8,8);
-    return {patch:{voice:voices[number(t[0],0,2,true)],cutoff:number(t[1],80,10000),decay:number(t[2],.08,1),tone:number(t[3],0,100),resonance:number(t[4],0,18),volume:.7},
+    return {patch:{voice:voices[number(t[0],0,voices.length-1,true)],cutoff:number(t[1],80,10000),decay:number(t[2],.08,1),tone:number(t[3],0,100),resonance:number(t[4],0,18),volume:.7},
       volume:number(t[5],0,1),muted:flag(t[6]),notes:array(t[7],16,16).map(n=>n===null?null:number(n,0,127,true))};
   });
   return {bpm:number(data[0],50,220),swing:number(data[1],0,.6),root:number(data[2],0,11,true),activeTrack:number(data[3],0,tracks.length-1,true),masterVolume:number(data[4],0,1),tracks,
